@@ -225,11 +225,59 @@ html, body {
   text-align: center;
 }
 
-.content-section h2 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+
+/* Content below spacetime*/
+
+.content-section {
+  display: block; /* Removed flex centering to allow full width */
+  position: relative;
+  width: 100%; 
+  min-height: 100vh;
+  background: #ffffff; 
+  color: #000000; 
+  padding: 12rem 4vw; /* 4vw padding keeps it flush to the extreme left edge without clipping */
+  z-index: 10;
 }
 
-.content-section p {
-  color: rgba(255, 255, 255, 0.6);
+.about-container {
+  display: grid;
+  /* Left column takes up 25% of the screen for the label, the rest is for the text */
+  grid-template-columns: 25vw 1fr; 
+  width: 100%;
+  gap: 2rem;
+}
+
+.about-label {
+  font-family: monospace; 
+  color: rgba(0, 0, 0, 0.6); 
+  font-size: 0.85rem;
+  padding-top: 0.6rem; 
+  text-align: left; /* Forces the text to stick to the extreme left boundary */
+}
+
+.about-text {
+  text-align: left;
+  max-width: 900px; /* Prevents the text from stretching too wide on massive monitors */
+}
+
+.about-text p {
+  font-size: clamp(1.2rem, 2.5vw, 1.7rem); 
+  line-height: 1.6;
+  color: #000000; 
+  margin: 0 0 1rem 0;
+  font-weight: 400; 
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .content-section {
+    padding: 6rem 5vw;
+  }
+  .about-container {
+    grid-template-columns: 1fr;
+  }
+  .about-label {
+    margin-bottom: 1rem;
+    padding-top: 0;
+  }
 }

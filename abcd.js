@@ -2,27 +2,23 @@ const canvas = document.getElementById('spacetimeCanvas');
 const ctx = canvas.getContext('2d');
 
 let width, height;
-let screenScale = 1.75; // Default multiplier
+let screenScale = 1.75; 
 let mouse = { x: 0, z: 1000, targetX: 0, targetZ: 1000, active: false };
 
 function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
-    
-    // RESPONSIVE FIX: Calculates scale based on screen width
-    // At 1920px (standard monitor), it perfectly hits the 1.75 Goldilocks multiplier.
-    // On smaller laptops or phones, it scales down proportionally so it never goes off-screen.
     screenScale = Math.min(1.85, width * 0.00091); 
 }
 window.addEventListener('resize', resize);
 
 // ----------------------------------------------------
-// GENERATE BASE PARTICLE TEXT (Only runs once)
+// GENERATE BASE PARTICLE TEXT
 // ----------------------------------------------------
 const textCanvas = document.createElement('canvas');
 const tCtx = textCanvas.getContext('2d', { willReadFrequently: true });
 textCanvas.width = 2000; 
-textCanvas.height = 500;
+textCanvas.height = 400;
 
 tCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
 tCtx.font = '900 220px "Mona Sans", sans-serif'; 
@@ -34,12 +30,11 @@ tCtx.fillText('PRAJWAL O', textCanvas.width / 2, textCanvas.height / 2);
 const imgData = tCtx.getImageData(0, 0, textCanvas.width, textCanvas.height).data;
 let baseTextParticles = [];
 
-const step = 4; // Density of particles
+const step = 4; 
 for (let y = 0; y < textCanvas.height; y += step) {
     for (let x = 0; x < textCanvas.width; x += step) {
         let alpha = imgData[(y * textCanvas.width + x) * 4 + 3];
         if (alpha > 128) {
-            // We now store the raw, unscaled base coordinates
             baseTextParticles.push({ 
                 baseX: (x - textCanvas.width / 2), 
                 baseZ: (textCanvas.height / 2 - y)
@@ -48,7 +43,6 @@ for (let y = 0; y < textCanvas.height; y += step) {
     }
 }
 
-// Call resize initially to set the correct scale for the first load
 resize();
 
 // ----------------------------------------------------
@@ -80,7 +74,8 @@ function project(x, y, z) {
     let cz = z - camZ;
     let cy = y - camY;
     
-    const pitch = 0.35; 
+    // INCREASED PITCH: Tilts the plane upwards (from 0.35 to 0.65) to reveal the text perfectly
+    const pitch = 0.50; 
     
     let ry = cy * Math.cos(pitch) - cz * Math.sin(pitch);
     let rz = cy * Math.sin(pitch) + cz * Math.cos(pitch);
@@ -160,12 +155,10 @@ function animate() {
         ctx.stroke();
     }
 
-    // DRAW TEXT PARTICLES (Now dynamically scaled!)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     for (let i = 0; i < baseTextParticles.length; i++) {
         let bp = baseTextParticles[i];
         
-        // Apply the responsive multiplier calculated in resize()
         let tpX = bp.baseX * screenScale;
         let tpZ = bp.baseZ * screenScale + 680;
         let py = 0;
