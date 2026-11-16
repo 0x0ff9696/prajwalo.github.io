@@ -1,130 +1,62 @@
-/*nav*/
-function inverseMousePosition(element, event) {
-  const rect = element.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
-
-  const res = {
-    x1: -(x - rect.width / 2) / 20, // top left
-    y1: -(y - rect.height / 2) / 20,
-    x2: -(x - rect.width / 2) / 20, // top right
-    y2: (y - rect.height / 2) / 20,
-    x3: (x - rect.width / 2) / 20, // bottom left
-    y3: -(y - rect.height / 2) / 20,
-    x4: (x - rect.width / 2) / 20, // bottom right
-    y4: (y - rect.height / 2) / 20
-  };
-
-  const resKey =
-    "x" + (x < rect.width / 2 ? 1 : 2) + (y < rect.height / 2 ? 1 : 3);
-  const tilt = res;
-  return tilt !== undefined ? tilt : 0; // default to 0 if undefined
-}
-
-
-
-
-function handleClick(event) {
-  const nav = document.querySelector('.nav');
-  const target = event.target.parentNode;
-  const width = target.offsetWidth;
-  const { left } = target.getBoundingClientRect();
-  const offsetLeft = left - nav.getBoundingClientRect().left;
-  
-  [...nav.querySelectorAll('li')].map(link => link.classList.remove('active'))
-  event.target.parentNode.classList.add('active');
-
-  nav.style.setProperty('--after-bg-position', offsetLeft);
-  nav.style.setProperty('--after-radial-bg-position', (left + width/2) - nav.getBoundingClientRect().left);
-  nav.style.setProperty('--after-bg-width', width);
-}
-
-const nav = document.querySelector('.nav');
-
-
-const links = nav.querySelectorAll('li a');
-for (let i = 0; i < links.length; i++) {
-  links[i].addEventListener('click', handleClick);
-   links[i].addEventListener("mousemove", (event) => {
-      const tilt = inverseMousePosition(event.target, event);
-
-      nav.style.setProperty("--tilt-bg-y", tilt.x1 * 2); // tone down the movement a bit
-      nav.style.setProperty("--tilt-bg-x", tilt.y1 * 2); // tone down the movement a bit
-   });
-}
-
-['DOMContentLoaded', 'resize'].map(event => window.addEventListener(event, () => {
-  
-  const {width, left} = links[0].parentNode.getBoundingClientRect();
-  for (let i = 0; i < links.length; i++) {
-  links[i].parentNode.classList.remove('active')
-}
-
-  links[0].parentNode.classList.add('active');
-
-  const offsetLeft = left - nav.getBoundingClientRect().left;
-
-  nav.style.setProperty('--after-bg-position', offsetLeft);
-  nav.style.setProperty('--after-radial-bg-position', 0);
-  nav.style.setProperty('--after-bg-width', width);
-}));
-
-/* Spacetime Curve*/
-
 const canvas = document.getElementById('spacetimeCanvas');
 const ctx = canvas.getContext('2d');
 
 let width, height;
+let screenScale = 1.75; // Default multiplier
 let mouse = { x: 0, z: 1000, targetX: 0, targetZ: 1000, active: false };
 
 function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
+    
+    // RESPONSIVE FIX: Calculates scale based on screen width
+    // At 1920px (standard monitor), it perfectly hits the 1.75 Goldilocks multiplier.
+    // On smaller laptops or phones, it scales down proportionally so it never goes off-screen.
+    screenScale = Math.min(1.85, width * 0.00091); 
 }
 window.addEventListener('resize', resize);
-resize();
 
-// GENERATE PARTICLE TEXT
+// ----------------------------------------------------
+// GENERATE BASE PARTICLE TEXT (Only runs once)
+// ----------------------------------------------------
 const textCanvas = document.createElement('canvas');
 const tCtx = textCanvas.getContext('2d', { willReadFrequently: true });
-// Middle-ground canvas width
-textCanvas.width = 2200; 
+textCanvas.width = 2000; 
 textCanvas.height = 500;
 
 tCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
-// The "Goldilocks" font size
-tCtx.font = '900 200px "Mona Sans", sans-serif'; 
+tCtx.font = '900 220px "Mona Sans", sans-serif'; 
 tCtx.fillStyle = '#ffffff';
 tCtx.textAlign = 'center';
 tCtx.textBaseline = 'middle';
 tCtx.fillText('PRAJWAL O', textCanvas.width / 2, textCanvas.height / 2);
 
 const imgData = tCtx.getImageData(0, 0, textCanvas.width, textCanvas.height).data;
-let textParticles = [];
+let baseTextParticles = [];
 
 const step = 4; // Density of particles
 for (let y = 0; y < textCanvas.height; y += step) {
     for (let x = 0; x < textCanvas.width; x += step) {
         let alpha = imgData[(y * textCanvas.width + x) * 4 + 3];
         if (alpha > 128) {
-            
-            // Perfect middle-ground multiplier for the width spread
-            let px = (x - textCanvas.width / 2) * 1.85; 
-            
-            // Set the depth (Z) exactly at 600 - right between the last two attempts
-            let pz = (textCanvas.height / 2 - y) * 1.85 + 600; 
-            
-            textParticles.push({ x: px, z: pz });
+            // We now store the raw, unscaled base coordinates
+            baseTextParticles.push({ 
+                baseX: (x - textCanvas.width / 2), 
+                baseZ: (textCanvas.height / 2 - y)
+            });
         }
     }
 }
 
+// Call resize initially to set the correct scale for the first load
+resize();
+
+// ----------------------------------------------------
 // INTERACTION
+// ----------------------------------------------------
 const header = document.querySelector('.spacetime-header');
 header.addEventListener('mousemove', (e) => {
     mouse.active = true;
-    
-    // Calculates mouse position relative to the header, even if scrolled
     const rect = header.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -137,7 +69,9 @@ header.addEventListener('mouseleave', () => {
     mouse.active = false;
 });
 
+// ----------------------------------------------------
 // 3D ENGINE
+// ----------------------------------------------------
 function project(x, y, z) {
     const fov = 750;
     const camZ = -500; 
@@ -226,20 +160,25 @@ function animate() {
         ctx.stroke();
     }
 
+    // DRAW TEXT PARTICLES (Now dynamically scaled!)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    for (let i = 0; i < textParticles.length; i++) {
-        let tp = textParticles[i];
+    for (let i = 0; i < baseTextParticles.length; i++) {
+        let bp = baseTextParticles[i];
+        
+        // Apply the responsive multiplier calculated in resize()
+        let tpX = bp.baseX * screenScale;
+        let tpZ = bp.baseZ * screenScale + 680;
         let py = 0;
 
         if (mouse.active) {
-            let dist = Math.sqrt(Math.pow(tp.x - mouse.x, 2) + Math.pow(tp.z - mouse.z, 2));
+            let dist = Math.sqrt(Math.pow(tpX - mouse.x, 2) + Math.pow(tpZ - mouse.z, 2));
             if (dist < radius) {
                 let force = Math.cos((dist / radius) * (Math.PI / 2));
                 py = (force * force) * wellDepth;
             }
         }
 
-        let pr = project(tp.x, py, tp.z);
+        let pr = project(tpX, py, tpZ);
         if (pr.scale > 0) {
             let size = Math.max(0.65, 2.2 * pr.scale); 
             ctx.fillRect(pr.x, pr.y, size, size);
