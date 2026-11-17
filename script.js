@@ -9,12 +9,8 @@ function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
     
-    // SCALE: Mobile gets special scaling, PC stays exactly as it was
-    if (width < 768) {
-        screenScale = width * 0.0013; 
-    } else {
-        screenScale = Math.min(1.85, width * 0.00091); 
-    }
+    // VISUAL FIX: Reverted to the original universal math that looked perfect on both PC and mobile
+    screenScale = Math.min(1.85, width * 0.00091); 
 }
 window.addEventListener('resize', resize);
 
@@ -52,11 +48,10 @@ for (let y = 0; y < textCanvas.height; y += step) {
 resize();
 
 // ----------------------------------------------------
-// INTERACTION
+// INTERACTION (Mouse + Touch)
 // ----------------------------------------------------
 const header = document.querySelector('.spacetime-header');
 
-// MOUSE: Isolates PC speed from Mobile speed
 header.addEventListener('mousemove', (e) => {
     mouse.active = true;
     const rect = header.getBoundingClientRect();
@@ -64,17 +59,16 @@ header.addEventListener('mousemove', (e) => {
     const y = e.clientY - rect.top;
 
     if (width < 768) {
-        // Slower movement for small mobile screens
+        // SENSITIVITY FIX: Slower reaction speed for mobile
         mouse.targetX = (x / width - 0.5) * 2200;
         mouse.targetZ = (1 - (y / height)) * 2000;
     } else {
-        // Original fast movement for PC
+        // Normal fast reaction speed for PC
         mouse.targetX = (x / width - 0.5) * 4500;
         mouse.targetZ = (1 - (y / height)) * 3500 - 200;
     }
 });
 
-// TOUCH: Dedicated smooth mobile touch
 header.addEventListener('touchmove', (e) => {
     mouse.active = true;
     const rect = header.getBoundingClientRect();
@@ -82,6 +76,7 @@ header.addEventListener('touchmove', (e) => {
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
 
+    // SENSITIVITY FIX: Slower reaction speed for mobile touch
     mouse.targetX = (x / width - 0.5) * 2200;
     mouse.targetZ = (1 - (y / height)) * 2000;
 }, { passive: true });
@@ -93,14 +88,12 @@ header.addEventListener('touchend', () => { mouse.active = false; });
 // 3D ENGINE
 // ----------------------------------------------------
 function project(x, y, z) {
-    const isMobile = width < 768;
-    
-    // CAMERA SETTINGS: Keep PC settings identical to the "Before" picture. 
-    // Apply fixes (tilt, depth, FOV) ONLY to mobile.
-    const fov = isMobile ? 1200 : 750; 
-    const camZ = isMobile ? -900 : -500; 
+    // CAMERA FIX: Removed the mobile-specific overrides that broke the view. 
+    // This is the exact camera setup that looked great before.
+    const fov = 750; 
+    const camZ = -500; 
     const camY = -450; 
-    const pitch = isMobile ? 0.65 : 0.50; // 0.35 is the original PC tilt, 0.65 tilts mobile up
+    const pitch = 0.65; 
     
     let cz = z - camZ;
     let cy = y - camY;
