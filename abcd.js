@@ -8,7 +8,13 @@ let mouse = { x: 0, z: 1000, targetX: 0, targetZ: 1000, active: false };
 function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
-    screenScale = Math.min(1.85, width * 0.00091); 
+    
+    // SCALE: Mobile gets special scaling, PC stays exactly as it was
+    if (width < 768) {
+        screenScale = width * 0.0013; 
+    } else {
+        screenScale = Math.min(1.85, width * 0.00091); 
+    }
 }
 window.addEventListener('resize', resize);
 
@@ -18,7 +24,7 @@ window.addEventListener('resize', resize);
 const textCanvas = document.createElement('canvas');
 const tCtx = textCanvas.getContext('2d', { willReadFrequently: true });
 textCanvas.width = 2000; 
-textCanvas.height = 400;
+textCanvas.height = 500;
 
 tCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
 tCtx.font = '900 220px "Mona Sans", sans-serif'; 
@@ -49,33 +55,55 @@ resize();
 // INTERACTION
 // ----------------------------------------------------
 const header = document.querySelector('.spacetime-header');
+
+// MOUSE: Isolates PC speed from Mobile speed
 header.addEventListener('mousemove', (e) => {
     mouse.active = true;
     const rect = header.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    mouse.targetX = (x / width - 0.5) * 4500;
-    mouse.targetZ = (1 - (y / height)) * 3500 - 200;
+    if (width < 768) {
+        // Slower movement for small mobile screens
+        mouse.targetX = (x / width - 0.5) * 2200;
+        mouse.targetZ = (1 - (y / height)) * 2000;
+    } else {
+        // Original fast movement for PC
+        mouse.targetX = (x / width - 0.5) * 4500;
+        mouse.targetZ = (1 - (y / height)) * 3500 - 200;
+    }
 });
 
-header.addEventListener('mouseleave', () => {
-    mouse.active = false;
-});
+// TOUCH: Dedicated smooth mobile touch
+header.addEventListener('touchmove', (e) => {
+    mouse.active = true;
+    const rect = header.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+
+    mouse.targetX = (x / width - 0.5) * 2200;
+    mouse.targetZ = (1 - (y / height)) * 2000;
+}, { passive: true });
+
+header.addEventListener('mouseleave', () => { mouse.active = false; });
+header.addEventListener('touchend', () => { mouse.active = false; });
 
 // ----------------------------------------------------
 // 3D ENGINE
 // ----------------------------------------------------
 function project(x, y, z) {
-    const fov = 750;
-    const camZ = -500; 
+    const isMobile = width < 768;
+    
+    // CAMERA SETTINGS: Keep PC settings identical to the "Before" picture. 
+    // Apply fixes (tilt, depth, FOV) ONLY to mobile.
+    const fov = isMobile ? 1200 : 750; 
+    const camZ = isMobile ? -900 : -500; 
     const camY = -450; 
+    const pitch = isMobile ? 0.65 : 0.50; // 0.35 is the original PC tilt, 0.65 tilts mobile up
     
     let cz = z - camZ;
     let cy = y - camY;
-    
-    // INCREASED PITCH: Tilts the plane upwards (from 0.35 to 0.65) to reveal the text perfectly
-    const pitch = 0.50; 
     
     let ry = cy * Math.cos(pitch) - cz * Math.sin(pitch);
     let rz = cy * Math.sin(pitch) + cz * Math.cos(pitch);
@@ -94,8 +122,8 @@ function animate() {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, width, height);
 
-    mouse.x += (mouse.targetX - mouse.x) * 0.15;
-    mouse.z += (mouse.targetZ - mouse.z) * 0.15;
+    mouse.x += (mouse.targetX - mouse.x) * 0.1;
+    mouse.z += (mouse.targetZ - mouse.z) * 0.1;
 
     const gridWidth = 18000; 
     const gridDepth = 14000;

@@ -241,7 +241,6 @@ html, body {
 
 .about-container {
   display: grid;
-  /* Left column takes up 25% of the screen for the label, the rest is for the text */
   grid-template-columns: 25vw 1fr; 
   width: 100%;
   gap: 2rem;
